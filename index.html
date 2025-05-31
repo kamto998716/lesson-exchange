@@ -1,0 +1,2262 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學校課表調整系統 - 修正版</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        .section {
+            background-color: #fff;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 0.75rem;
+            color: #4f46e5;
+            font-size: 1.1rem;
+        }
+        
+        /* Schedule Grid Styles */
+        .schedule-grid {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .schedule-grid table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .schedule-grid th, .schedule-grid td {
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        .schedule-grid th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .schedule-grid .period-cell {
+            width: 80px;
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
+        
+        .schedule-grid .class-cell {
+            min-width: 130px;
+            transition: background-color 0.2s;
+        }
+        
+        .schedule-grid .empty-cell {
+            background-color: #f9fafb;
+            color: #9ca3af;
+        }
+        
+        .schedule-grid .teacher-cell {
+            min-height: 80px;
+            background-color: #ecfdf5;
+            transition: all 0.2s;
+        }
+        
+        .schedule-grid .teacher-cell:hover {
+            background-color: #d1fae5;
+        }
+        
+        .schedule-grid .conflict-cell {
+            background-color: #fee2e2;
+            position: relative;
+        }
+        
+        .schedule-grid .conflict-cell::after {
+            content: "!";
+            position: absolute;
+            top: 0;
+            right: 0.25rem;
+            font-weight: 700;
+            color: #dc2626;
+        }
+        
+        /* Clickable cells for admin mode */
+        .admin-mode .schedule-grid td:not(.period-cell) {
+            cursor: pointer;
+        }
+        
+        .admin-mode .schedule-grid td:not(.period-cell):hover {
+            background-color: #ddd6fe !important;
+            border-color: #4f46e5;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-panel h3 {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-size: 1.125rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .control-panel h3 i {
+            margin-right: 0.5rem;
+            color: #4f46e5;
+        }
+        
+        /* Form Elements */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.375rem;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            box-sizing: border-box;
+            background-color: #fff;
+            transition: border-color 0.15s ease-in-out;
+        }
+        
+        .form-control:focus {
+            border-color: #6366f1;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        
+        .btn-success {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #059669;
+        }
+        
+        .btn-warning {
+            background-color: #f59e0b;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background-color: #d97706;
+        }
+        
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        
+        .btn i {
+            margin-right: 0.5rem;
+        }
+        
+        /* Solution Card */
+        .solution-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #f9fafb;
+            transition: all 0.2s;
+        }
+        
+        .solution-card:hover {
+            background-color: #f3f4f6;
+            border-color: #4f46e5;
+        }
+        
+        .solution-card.selected {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+            border-width: 2px;
+        }
+        
+        .solution-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .solution-type {
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+        }
+        
+        .solution-type i {
+            margin-right: 0.5rem;
+        }
+        
+        .solution-steps {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .solution-detail {
+            margin-top: 0.75rem;
+        }
+        
+        .solution-step {
+            display: flex;
+            align-items: center;
+            padding: 0.375rem 0;
+            border-bottom: 1px dashed #d1d5db;
+            font-size: 0.875rem;
+        }
+        
+        .solution-step:last-child {
+            border-bottom: none;
+        }
+        
+        .solution-step i {
+            margin: 0 0.5rem;
+            color: #059669;
+        }
+        
+        /* Results */
+        .result-container {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #4b5563;
+            display: flex;
+            align-items: center;
+        }
+        
+        .result-title i {
+            margin-right: 0.5rem;
+        }
+        
+        .no-solution {
+            color: #dc2626;
+            font-weight: 500;
+            padding: 0.75rem;
+            background-color: #fee2e2;
+            border-radius: 0.375rem;
+            border-left: 4px solid #ef4444;
+            display: flex;
+            align-items: center;
+        }
+        
+        .no-solution i {
+            margin-right: 0.5rem;
+        }
+        
+        /* Legend */
+        .schedule-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            font-size: 0.875rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .legend-color {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.375rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.25rem;
+        }
+        
+        .has-class {
+            background-color: #ecfdf5;
+        }
+        
+        .empty-slot {
+            background-color: #f9fafb;
+        }
+        
+        .conflict {
+            background-color: #fee2e2;
+        }
+        
+        /* Messages */
+        .message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        
+        .message i {
+            margin-right: 0.5rem;
+        }
+        
+        .message.success {
+            background-color: #ecfdf5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+        
+        .message.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .message.info {
+            background-color: #eff6ff;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        /* Admin toggle */
+        .admin-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .solution-step {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 0.75rem 0;
+            }
+            
+            .solution-step i {
+                margin: 0.5rem 0;
+            }
+        }
+        
+        /* Print/PDF styles */
+        @media print {
+            body {
+                background-color: white;
+                color: black;
+            }
+            
+            .admin-toggle {
+                display: none;
+            }
+            
+            .section {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                page-break-inside: avoid;
+                margin-bottom: 1rem;
+            }
+            
+            .btn {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Admin Toggle -->
+    <div class="admin-toggle">
+        <button id="admin-toggle" class="btn btn-warning">
+            <i class="fas fa-cog"></i>管理員模式
+        </button>
+    </div>
+
+    <div class="container">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">學校課表調整系統</h1>
+            <p class="text-gray-600">高效、直觀的課表管理與調課方案查找工具</p>
+        </header>
+        
+        <!-- Exchange Tool Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-sync-alt"></i>尋找調課方案
+            </h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="teacher">
+                        <i class="fas fa-user-tie mr-1"></i>請選擇教師：
+                    </label>
+                    <select id="teacher" class="form-control">
+                        <option value="">--請選擇--</option>
+                        <option value="王老師">王老師</option>
+                        <option value="林老師">林老師</option>
+                        <option value="張老師">張老師</option>
+                        <option value="李老師">李老師</option>
+                        <option value="陳老師">陳老師</option>
+                        <option value="黃老師">黃老師</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="day">
+                        <i class="fas fa-calendar-day mr-1"></i>請選擇日期：
+                    </label>
+                    <select id="day" class="form-control">
+                        <option value="">--請選擇--</option>
+                        <option value="Monday">星期一</option>
+                        <option value="Tuesday">星期二</option>
+                        <option value="Wednesday">星期三</option>
+                        <option value="Thursday">星期四</option>
+                        <option value="Friday">星期五</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="period">
+                        <i class="fas fa-clock mr-1"></i>請選擇節次：
+                    </label>
+                    <select id="period" class="form-control">
+                        <option value="">--請選擇--</option>
+                        <option value="1">第一節</option>
+                        <option value="2">第二節</option>
+                        <option value="3">第三節</option>
+                        <option value="4">第四節</option>
+                        <option value="5">第五節</option>
+                        <option value="6">第六節</option>
+                        <option value="7">第七節</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="className">
+                        <i class="fas fa-users mr-1"></i>請選擇班級：
+                    </label>
+                    <select id="className" class="form-control">
+                        <option value="">--請選擇--</option>
+                        <option value="1A">1A</option>
+                        <option value="1B">1B</option>
+                        <option value="1C">1C</option>
+                        <option value="2A">2A</option>
+                        <option value="2B">2B</option>
+                        <option value="2C">2C</option>
+                        <option value="3A">3A</option>
+                        <option value="3B">3B</option>
+                        <option value="3C">3C</option>
+                        <option value="4A">4A</option>
+                        <option value="4B">4B</option>
+                        <option value="4C">4C</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button id="findSolution" class="btn btn-primary">
+                <i class="fas fa-search"></i>尋找調課方案
+            </button>
+            
+            <div id="result" class="result-container">
+                <p class="result-title">
+                    <i class="fas fa-info-circle"></i>操作提示
+                </p>
+                <p>請選擇教師、日期、節次和班級，然後點擊「尋找調課方案」按鈕。系統將自動尋找適合的調課方案。</p>
+            </div>
+        </div>
+        
+        <!-- Teacher Schedule Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-chalkboard-teacher"></i>教師課表視圖
+            </h2>
+            
+            <div class="control-panel">
+                <h3>
+                    <i class="fas fa-calendar-alt"></i>教師每日課表比較
+                </h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>檢視方式：</label>
+                        <select id="view-mode" class="form-control">
+                            <option value="comparison">多教師比較</option>
+                            <option value="individual">單一教師詳細</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>比較教師：</label>
+                    <div class="form-grid">
+                        <select class="form-control teacher-select" id="teacher-select-1">
+                            <option value="">選擇教師</option>
+                            <option value="王老師">王老師</option>
+                            <option value="林老師">林老師</option>
+                            <option value="張老師">張老師</option>
+                            <option value="李老師">李老師</option>
+                            <option value="陳老師">陳老師</option>
+                            <option value="黃老師">黃老師</option>
+                        </select>
+                        <select class="form-control teacher-select" id="teacher-select-2">
+                            <option value="">選擇教師</option>
+                            <option value="王老師">王老師</option>
+                            <option value="林老師">林老師</option>
+                            <option value="張老師">張老師</option>
+                            <option value="李老師">李老師</option>
+                            <option value="陳老師">陳老師</option>
+                            <option value="黃老師">黃老師</option>
+                        </select>
+                        <select class="form-control teacher-select" id="teacher-select-3">
+                            <option value="">選擇教師</option>
+                            <option value="王老師">王老師</option>
+                            <option value="林老師">林老師</option>
+                            <option value="張老師">張老師</option>
+                            <option value="李老師">李老師</option>
+                            <option value="陳老師">陳老師</option>
+                            <option value="黃老師">黃老師</option>
+                        </select>
+                        <select class="form-control teacher-select" id="teacher-select-4">
+                            <option value="">選擇教師</option>
+                            <option value="王老師">王老師</option>
+                            <option value="林老師">林老師</option>
+                            <option value="張老師">張老師</option>
+                            <option value="李老師">李老師</option>
+                            <option value="陳老師">陳老師</option>
+                            <option value="黃老師">黃老師</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="schedule-grid" id="teacher-schedule-grid">
+                <p class="text-gray-500 text-center py-8">請選擇至少一位教師以顯示課表資料</p>
+            </div>
+            
+            <div class="schedule-legend">
+                <div class="legend-item">
+                    <div class="legend-color has-class"></div>
+                    <span>有課</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color empty-slot"></div>
+                    <span>無課</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color conflict"></div>
+                    <span>課表衝突</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Class Schedule Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-school"></i>班級課表視圖
+            </h2>
+            
+            <div class="control-panel">
+                <h3>
+                    <i class="fas fa-users-class"></i>班級課表總覽
+                </h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>選擇年級：</label>
+                        <select id="grade-select" class="form-control">
+                            <option value="1">一年級 (1A-1D)</option>
+                            <option value="2">二年級 (2A-2D)</option>
+                            <option value="3">三年級 (3A-3D)</option>
+                            <option value="4">四年級 (4A-4D)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>選擇日期：</label>
+                        <select id="day-select" class="form-control">
+                            <option value="Monday">星期一</option>
+                            <option value="Tuesday">星期二</option>
+                            <option value="Wednesday">星期三</option>
+                            <option value="Thursday">星期四</option>
+                            <option value="Friday">星期五</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="schedule-grid" id="class-schedule-grid">
+                <!-- Class schedule grid will be generated here -->
+            </div>
+        </div>
+        
+        <!-- Admin Panel Section -->
+        <div class="section" id="admin-panel" style="display: none;">
+            <h2 class="section-title">
+                <i class="fas fa-user-cog"></i>管理員模式
+            </h2>
+            
+            <div class="control-panel">
+                <h3>
+                    <i class="fas fa-edit"></i>快速編輯指南
+                </h3>
+                <p class="mb-4">在管理員模式下，您可以直接點擊課表中的任何格子進行編輯。點擊格子後會出現編輯選單，讓您快速指派或更改教師。</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>編輯模式：</label>
+                        <select id="edit-mode" class="form-control">
+                            <option value="teacher">教師資料</option>
+                            <option value="schedule">課表資料</option>
+                            <option value="class">班級資料</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Teacher Edit Panel -->
+            <div id="teacher-edit-panel" class="control-panel">
+                <h3>
+                    <i class="fas fa-user-edit"></i>教師資料編輯
+                </h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>選擇教師：</label>
+                        <select id="edit-teacher" class="form-control">
+                            <option value="">--新增教師--</option>
+                            <option value="王老師">王老師</option>
+                            <option value="林老師">林老師</option>
+                            <option value="張老師">張老師</option>
+                            <option value="李老師">李老師</option>
+                            <option value="陳老師">陳老師</option>
+                            <option value="黃老師">黃老師</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>教師名稱：</label>
+                        <input type="text" id="teacher-name" class="form-control" placeholder="輸入教師名稱">
+                    </div>
+                    <div class="form-group">
+                        <label>教授科目：</label>
+                        <input type="text" id="teacher-subject" class="form-control" placeholder="輸入教授科目">
+                    </div>
+                    <div class="form-group">
+                        <label>最大授課節數：</label>
+                        <input type="number" id="teacher-max-periods" class="form-control" min="0" max="35" placeholder="每週最大授課節數">
+                    </div>
+                </div>
+                <div>
+                    <button id="save-teacher" class="btn btn-primary">
+                        <i class="fas fa-save"></i>儲存教師資料
+                    </button>
+                    <button id="add-teacher" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i>新增教師
+                    </button>
+                    <button id="delete-teacher" class="btn btn-danger">
+                        <i class="fas fa-user-minus"></i>刪除教師
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Schedule Edit Panel -->
+            <div id="schedule-edit-panel" class="control-panel" style="display: none;">
+                <h3>
+                    <i class="fas fa-calendar-edit"></i>課表資料編輯
+                </h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>選擇日期：</label>
+                        <select id="edit-day" class="form-control">
+                            <option value="Monday">星期一</option>
+                            <option value="Tuesday">星期二</option>
+                            <option value="Wednesday">星期三</option>
+                            <option value="Thursday">星期四</option>
+                            <option value="Friday">星期五</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>選擇節次：</label>
+                        <select id="edit-period" class="form-control">
+                            <option value="1">第一節</option>
+                            <option value="2">第二節</option>
+                            <option value="3">第三節</option>
+                            <option value="4">第四節</option>
+                            <option value="5">第五節</option>
+                            <option value="6">第六節</option>
+                            <option value="7">第七節</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>選擇班級：</label>
+                        <select id="edit-class" class="form-control">
+                            <option value="1A">1A</option>
+                            <option value="1B">1B</option>
+                            <option value="1C">1C</option>
+                            <option value="2A">2A</option>
+                            <option value="2B">2B</option>
+                            <option value="2C">2C</option>
+                            <option value="3A">3A</option>
+                            <option value="3B">3B</option>
+                            <option value="3C">3C</option>
+                            <option value="4A">4A</option>
+                            <option value="4B">4B</option>
+                            <option value="4C">4C</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>指派教師：</label>
+                        <select id="assign-teacher" class="form-control">
+                            <option value="">無課</option>
+                            <option value="王老師">王老師</option>
+                            <option value="林老師">林老師</option>
+                            <option value="張老師">張老師</option>
+                            <option value="李老師">李老師</option>
+                            <option value="陳老師">陳老師</option>
+                            <option value="黃老師">黃老師</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <button id="save-schedule" class="btn btn-primary">
+                        <i class="fas fa-save"></i>儲存課表資料
+                    </button>
+                    <button id="check-conflicts" class="btn btn-warning">
+                        <i class="fas fa-exclamation-triangle"></i>檢查衝堂
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Class Edit Panel -->
+            <div id="class-edit-panel" class="control-panel" style="display: none;">
+                <h3>
+                    <i class="fas fa-users-cog"></i>班級資料編輯
+                </h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>年級：</label>
+                        <select id="class-grade" class="form-control">
+                            <option value="1">一年級</option>
+                            <option value="2">二年級</option>
+                            <option value="3">三年級</option>
+                            <option value="4">四年級</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>班級：</label>
+                        <select id="class-name" class="form-control">
+                            <option value="A">A班</option>
+                            <option value="B">B班</option>
+                            <option value="C">C班</option>
+                            <option value="D">D班</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>班導師：</label>
+                        <select id="class-teacher" class="form-control">
+                            <option value="">--請選擇--</option>
+                            <option value="王老師">王老師</option>
+                            <option value="林老師">林老師</option>
+                            <option value="張老師">張老師</option>
+                            <option value="李老師">李老師</option>
+                            <option value="陳老師">陳老師</option>
+                            <option value="黃老師">黃老師</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>班級人數：</label>
+                        <input type="number" id="class-size" class="form-control" min="0" placeholder="班級人數">
+                    </div>
+                </div>
+                <div>
+                    <button id="save-class" class="btn btn-primary">
+                        <i class="fas fa-save"></i>儲存班級資料
+                    </button>
+                    <button id="add-class" class="btn btn-success">
+                        <i class="fas fa-plus-circle"></i>新增班級
+                    </button>
+                </div>
+            </div>
+            
+            <div id="admin-message" class="message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Cell Edit Modal -->
+    <div id="cell-edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 300px;">
+            <h3 style="margin-bottom: 1rem; font-weight: 600;">編輯課表</h3>
+            <div id="modal-content">
+                <div class="form-group">
+                    <label>時間：</label>
+                    <div id="modal-time-info" style="font-weight: 500; color: #4b5563;"></div>
+                </div>
+                <div class="form-group">
+                    <label>指派教師：</label>
+                    <select id="modal-teacher-select" class="form-control">
+                        <option value="">無課</option>
+                        <option value="王老師">王老師</option>
+                        <option value="林老師">林老師</option>
+                        <option value="張老師">張老師</option>
+                        <option value="李老師">李老師</option>
+                        <option value="陳老師">陳老師</option>
+                        <option value="黃老師">黃老師</option>
+                    </select>
+                </div>
+                <div id="conflict-warning" style="display: none;" class="message error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>警告：該教師在此時段已有其他課程！</span>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button id="modal-cancel" class="btn btn-secondary">取消</button>
+                <button id="modal-save" class="btn btn-primary">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sample data
+            const teacherData = [
+                { id: 1, name: '王老師', subject: '數學', maxPeriods: 30 },
+                { id: 2, name: '林老師', subject: '英文', maxPeriods: 28 },
+                { id: 3, name: '張老師', subject: '國文', maxPeriods: 28 },
+                { id: 4, name: '李老師', subject: '自然', maxPeriods: 25 },
+                { id: 5, name: '陳老師', subject: '社會', maxPeriods: 25 },
+                { id: 6, name: '黃老師', subject: '體育', maxPeriods: 30 }
+            ];
+            
+            // Schedule data
+            const scheduleData = {
+                'Monday': {
+                    '1': { '1A': '王老師' },
+                    '2': { '1A': '林老師', '1B': '陳老師' },
+                    '3': { '1A': '張老師' },
+                    '4': { '1A': '李老師' }
+                },
+                'Tuesday': {
+                    '1': { '2B': '林老師' },
+                    '2': { '2C': '張老師' },
+                    '3': { '3A': '李老師' },
+                    '4': { '3B': '王老師' },
+                    '5': { '1A': '陳老師', '2C': '黃老師' }
+                },
+                'Wednesday': {
+                    '1': { '3C': '林老師' },
+                    '2': { '4A': '張老師', '3A': '陳老師' },
+                    '3': { '4B': '李老師' },
+                    '4': { '4C': '王老師' },
+                    '5': { '1A': '黃老師' }
+                },
+                'Thursday': {
+                    '1': { '1A': '林老師' },
+                    '5': { '1A': '張老師' },
+                    '6': { '1B': '李老師' },
+                    '7': { '1C': '王老師' }
+                },
+                'Friday': {
+                    '5': { '2A': '林老師' },
+                    '6': { '2B': '張老師' },
+                    '7': { '2C': '李老師' }
+                }
+            };
+            
+            // Global variables
+            let allExchangeSolutions = [];
+            let selectedSolutionIndex = -1;
+            let isAdminMode = false;
+            
+            // Helper functions
+            function translateDayToZh(day) {
+                const dayMap = {
+                    'Monday': '星期一',
+                    'Tuesday': '星期二',
+                    'Wednesday': '星期三',
+                    'Thursday': '星期四',
+                    'Friday': '星期五'
+                };
+                return dayMap[day] || day;
+            }
+            
+            function translateDayToEn(day) {
+                const dayMap = {
+                    '星期一': 'Monday',
+                    '星期二': 'Tuesday',
+                    '星期三': 'Wednesday',
+                    '星期四': 'Thursday',
+                    '星期五': 'Friday'
+                };
+                return dayMap[day] || day;
+            }
+            
+            // Check for teacher conflicts
+            function checkTeacherConflict(teacher, day, period, excludeClass = null) {
+                if (!scheduleData[day] || !scheduleData[day][period]) {
+                    return false;
+                }
+                
+                for (const [className, assignedTeacher] of Object.entries(scheduleData[day][period])) {
+                    if (className !== excludeClass && assignedTeacher === teacher) {
+                        return className;
+                    }
+                }
+                return false;
+            }
+            
+            // Admin mode toggle
+            document.getElementById('admin-toggle').addEventListener('click', function() {
+                isAdminMode = !isAdminMode;
+                const adminPanel = document.getElementById('admin-panel');
+                const body = document.body;
+                
+                if (isAdminMode) {
+                    adminPanel.style.display = 'block';
+                    body.classList.add('admin-mode');
+                    this.innerHTML = '<i class="fas fa-eye"></i>一般模式';
+                    this.className = 'btn btn-success';
+                } else {
+                    adminPanel.style.display = 'none';
+                    body.classList.remove('admin-mode');
+                    this.innerHTML = '<i class="fas fa-cog"></i>管理員模式';
+                    this.className = 'btn btn-warning';
+                }
+                
+                renderTeacherSchedule();
+                renderClassSchedule();
+            });
+            
+            // Admin edit mode switching
+            document.getElementById('edit-mode').addEventListener('change', function() {
+                const mode = this.value;
+                document.getElementById('teacher-edit-panel').style.display = 'none';
+                document.getElementById('schedule-edit-panel').style.display = 'none';
+                document.getElementById('class-edit-panel').style.display = 'none';
+                
+                if (mode === 'teacher') {
+                    document.getElementById('teacher-edit-panel').style.display = 'block';
+                } else if (mode === 'schedule') {
+                    document.getElementById('schedule-edit-panel').style.display = 'block';
+                } else if (mode === 'class') {
+                    document.getElementById('class-edit-panel').style.display = 'block';
+                }
+            });
+            
+            // Teacher Schedule Rendering
+            function renderTeacherSchedule() {
+                const selectedTeachers = [];
+                document.querySelectorAll('.teacher-select').forEach(select => {
+                    if (select.value) {
+                        selectedTeachers.push(select.value);
+                    }
+                });
+                
+                const teacherScheduleGrid = document.getElementById('teacher-schedule-grid');
+                
+                if (selectedTeachers.length === 0) {
+                    teacherScheduleGrid.innerHTML = '<p class="text-gray-500 text-center py-8">請選擇至少一位教師進行比較</p>';
+                    return;
+                }
+                
+                // Create schedule grid
+                let html = '<table>';
+                
+                // Header row
+                html += '<tr><th></th>';
+                const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                days.forEach(day => {
+                    html += `<th>${translateDayToZh(day)}</th>`;
+                });
+                html += '</tr>';
+                
+                // Periods (rows)
+                for (let period = 1; period <= 7; period++) {
+                    html += `<tr><td class="period-cell">第${period}節</td>`;
+                    
+                    // Days (columns)
+                    days.forEach(day => {
+                        const cellId = `teacher-cell-${day}-${period}`;
+                        html += `<td id="${cellId}" data-day="${day}" data-period="${period}" data-view="teacher">`;
+                        
+                        // For each selected teacher, show their class for this period/day
+                        selectedTeachers.forEach(teacher => {
+                            let className = '';
+                            let hasClass = false;
+                            
+                            // Check if teacher has a class at this time
+                            if (scheduleData[day] && scheduleData[day][period]) {
+                                for (const [class_name, assigned_teacher] of Object.entries(scheduleData[day][period])) {
+                                    if (assigned_teacher === teacher) {
+                                        hasClass = true;
+                                        className = class_name;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // Get teacher details
+                            const teacherInfo = teacherData.find(t => t.name === teacher) || { subject: '未知' };
+                            
+                            if (hasClass) {
+                                html += `
+                                    <div class="teacher-cell p-2 mb-1 rounded">
+                                        <div class="font-semibold">${teacher}</div>
+                                        <div class="text-sm">${className}</div>
+                                        <div class="text-xs text-gray-500">${teacherInfo.subject}</div>
+                                    </div>`;
+                            } else {
+                                html += `
+                                    <div class="empty-cell p-2 mb-1 rounded">
+                                        <div class="font-semibold">${teacher}</div>
+                                        <div class="text-sm text-gray-400">無課</div>
+                                    </div>`;
+                            }
+                        });
+                        
+                        html += '</td>';
+                    });
+                    
+                    html += '</tr>';
+                }
+                
+                html += '</table>';
+                teacherScheduleGrid.innerHTML = html;
+                
+                // Add click handlers if in admin mode
+                if (isAdminMode) {
+                    addCellClickHandlers('teacher');
+                }
+            }
+            
+            // Class Schedule Rendering
+            function renderClassSchedule() {
+                const selectedGrade = document.getElementById('grade-select').value;
+                const selectedDay = document.getElementById('day-select').value;
+                
+                // Create schedule grid
+                let html = '<table>';
+                
+                // Header row with class names
+                html += '<tr><th></th>';
+                for (let classNum = 0; classNum < 4; classNum++) {
+                    const className = `${selectedGrade}${String.fromCharCode(65 + classNum)}`;
+                    html += `<th>${className}</th>`;
+                }
+                html += '</tr>';
+                
+                // Periods (rows)
+                for (let period = 1; period <= 7; period++) {
+                    html += `<tr><td class="period-cell">第${period}節</td>`;
+                    
+                    // Classes (columns)
+                    for (let classNum = 0; classNum < 4; classNum++) {
+                        const className = `${selectedGrade}${String.fromCharCode(65 + classNum)}`;
+                        const cellId = `class-cell-${selectedDay}-${period}-${className}`;
+                        
+                        // Get teacher assigned to this slot from schedule data
+                        let teacher = null;
+                        let cellClass = 'empty-cell';
+                        
+                        if (scheduleData[selectedDay] && 
+                            scheduleData[selectedDay][period.toString()] && 
+                            scheduleData[selectedDay][period.toString()][className]) {
+                            teacher = scheduleData[selectedDay][period.toString()][className];
+                            cellClass = 'class-cell';
+                        }
+                        
+                        if (!teacher) {
+                            html += `<td id="${cellId}" class="empty-cell" data-day="${selectedDay}" data-period="${period}" data-class="${className}" data-view="class"><div class="text-gray-400">無課</div></td>`;
+                        } else {
+                            // Find teacher subject
+                            const teacherInfo = teacherData.find(t => t.name === teacher) || { subject: '未知' };
+                            
+                            html += `
+                                <td id="${cellId}" class="${cellClass}" data-day="${selectedDay}" data-period="${period}" data-class="${className}" data-view="class">
+                                    <div class="font-semibold">${teacher}</div>
+                                    <div class="text-sm">${teacherInfo.subject}</div>
+                                </td>`;
+                        }
+                    }
+                    
+                    html += '</tr>';
+                }
+                
+                html += '</table>';
+                
+                document.getElementById('class-schedule-grid').innerHTML = html;
+                
+                // Add click handlers if in admin mode
+                if (isAdminMode) {
+                    addCellClickHandlers('class');
+                }
+            }
+            
+            // Add click handlers for schedule cells in admin mode
+            function addCellClickHandlers(viewType) {
+                const selector = viewType === 'teacher' ? '#teacher-schedule-grid td[data-day]' : '#class-schedule-grid td[data-day]';
+                document.querySelectorAll(selector).forEach(cell => {
+                    cell.addEventListener('click', function() {
+                        if (!isAdminMode) return;
+                        
+                        const day = this.getAttribute('data-day');
+                        const period = this.getAttribute('data-period');
+                        const className = this.getAttribute('data-class') || '1A'; // Default class for teacher view
+                        
+                        openCellEditModal(day, period, className);
+                    });
+                });
+            }
+            
+            // Cell edit modal functions
+            function openCellEditModal(day, period, className) {
+                const modal = document.getElementById('cell-edit-modal');
+                const timeInfo = document.getElementById('modal-time-info');
+                const teacherSelect = document.getElementById('modal-teacher-select');
+                
+                // Set modal content
+                timeInfo.textContent = `${translateDayToZh(day)} 第${period}節 ${className}班`;
+                
+                // Get current teacher
+                const currentTeacher = (scheduleData[day] && scheduleData[day][period] && scheduleData[day][period][className]) || '';
+                teacherSelect.value = currentTeacher;
+                
+                // Store cell info for saving
+                modal.setAttribute('data-day', day);
+                modal.setAttribute('data-period', period);
+                modal.setAttribute('data-class', className);
+                
+                // Add change listener to check conflicts
+                teacherSelect.onchange = function() {
+                    const selectedTeacher = this.value;
+                    const conflictWarning = document.getElementById('conflict-warning');
+                    
+                    if (selectedTeacher) {
+                        const conflictClass = checkTeacherConflict(selectedTeacher, day, period, className);
+                        if (conflictClass) {
+                            conflictWarning.style.display = 'block';
+                            conflictWarning.querySelector('span').textContent = `警告：${selectedTeacher}在此時段已在${conflictClass}班上課！`;
+                        } else {
+                            conflictWarning.style.display = 'none';
+                        }
+                    } else {
+                        conflictWarning.style.display = 'none';
+                    }
+                };
+                
+                modal.style.display = 'block';
+            }
+            
+            // Modal event handlers
+            document.getElementById('modal-cancel').addEventListener('click', function() {
+                document.getElementById('cell-edit-modal').style.display = 'none';
+            });
+            
+            document.getElementById('modal-save').addEventListener('click', function() {
+                const modal = document.getElementById('cell-edit-modal');
+                const day = modal.getAttribute('data-day');
+                const period = modal.getAttribute('data-period');
+                const className = modal.getAttribute('data-class');
+                const newTeacher = document.getElementById('modal-teacher-select').value;
+                
+                // Check for conflicts before saving
+                if (newTeacher) {
+                    const conflictClass = checkTeacherConflict(newTeacher, day, period, className);
+                    if (conflictClass) {
+                        showMessage(`無法指派：${newTeacher}在此時段已在${conflictClass}班上課`, 'error');
+                        return;
+                    }
+                }
+                
+                // Update schedule data
+                updateScheduleCell(day, period, className, newTeacher);
+                
+                // Close modal
+                modal.style.display = 'none';
+                
+                // Re-render schedules
+                renderTeacherSchedule();
+                renderClassSchedule();
+                
+                showMessage('課表已更新', 'success');
+            });
+            
+            // Update schedule cell function
+            function updateScheduleCell(day, period, className, teacher) {
+                if (!scheduleData[day]) {
+                    scheduleData[day] = {};
+                }
+                
+                if (!scheduleData[day][period]) {
+                    scheduleData[day][period] = {};
+                }
+                
+                if (teacher) {
+                    scheduleData[day][period][className] = teacher;
+                } else {
+                    if (scheduleData[day][period][className]) {
+                        delete scheduleData[day][period][className];
+                    }
+                }
+            }
+            
+            // Initialize schedule views
+            document.querySelectorAll('.teacher-select').forEach(select => {
+                select.addEventListener('change', renderTeacherSchedule);
+            });
+            
+            document.getElementById('view-mode').addEventListener('change', renderTeacherSchedule);
+            document.getElementById('grade-select').addEventListener('change', renderClassSchedule);
+            document.getElementById('day-select').addEventListener('change', renderClassSchedule);
+            
+            // Schedule Exchange Algorithm
+          class ScheduleExchanger {
+    constructor(schedule) {
+        this.schedule = schedule;
+        this.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        this.periods = ['1', '2', '3', '4', '5', '6', '7'];
+        this.classNames = ['1A', '1B', '1C', '2A', '2B', '2C', '3A', '3B', '3C', '4A', '4B', '4C'];
+        this.debug = false; // 用於輸出除錯訊息
+    }
+
+    // 獲取特定時段的教師，如果沒有課程則返回 null
+    getTeacherAtSlot(day, period, className) {
+        if (!this.schedule[day] || !this.schedule[day][period] || !this.schedule[day][period][className]) {
+            return null;
+        }
+        return this.schedule[day][period][className];
+    }
+
+    // 檢查教師在特定時段是否已排課
+    checkTeacherConflict(teacher, day, period) {
+        if (!teacher) return false; // 確保有教師被指派
+        
+        for (const className of this.classNames) {
+            const teacherAtSlot = this.getTeacherAtSlot(day, period, className);
+            if (teacherAtSlot === teacher) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 檢查教師是否擁有特定時段的課程
+    teacherOwnsSlot(teacher, day, period, className) {
+        return this.getTeacherAtSlot(day, period, className) === teacher;
+    }
+    
+    // 檢查教師是否有教授特定班級的課程
+    teacherTeachesClass(teacher, className) {
+        for (const day of this.days) {
+            for (const period of this.periods) {
+                if (this.teacherOwnsSlot(teacher, day, period, className)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    // 獲取教師在特定班級的所有上課時段
+    getTeacherSlotsForClass(teacher, className) {
+        const slots = [];
+        for (const day of this.days) {
+            for (const period of this.periods) {
+                if (this.teacherOwnsSlot(teacher, day, period, className)) {
+                    slots.push({day, period});
+                }
+            }
+        }
+        return slots;
+    }
+    
+    // 日誌輸出函數，方便除錯
+    log(message) {
+        if (this.debug) {
+            console.log(message);
+        }
+    }
+
+    // 檢查課程是否存在（避免無課時段交換）
+    isClassScheduled(day, period, className) {
+        return !!this.getTeacherAtSlot(day, period, className);
+    }
+    
+    // 尋找直接交換方案
+    findDirectExchange(request) {
+        const requestingTeacher = request.teacher;
+        const requestDay = request.day;
+        const requestPeriod = request.period;
+        const requestClass = request.className;
+        
+        // 檢查請求班級在請求時段是否有課
+        const currentTeacher = this.getTeacherAtSlot(requestDay, requestPeriod, requestClass);
+        if (!currentTeacher) {
+            this.log("無課時段，無法交換");
+            return null;
+        }
+        
+        // 確保請求教師不是已在教授此課程
+        if (currentTeacher === requestingTeacher) {
+            this.log("教師已教授此課程");
+            return null;
+        }
+        
+        // 檢查請求教師在此時段是否已有課
+        if (this.checkTeacherConflict(requestingTeacher, requestDay, requestPeriod)) {
+            this.log("請求教師在此時段已有課程");
+            return null;
+        }
+        
+        // 檢查請求教師是否有教授請求班級的任何課程
+        if (!this.teacherTeachesClass(requestingTeacher, requestClass)) {
+            this.log("請求教師不教授此班級任何課程");
+            return null;
+        }
+        
+        // 尋找請求教師教授請求班級的時段
+        for (const day of this.days) {
+            for (const period of this.periods) {
+                // 確認請求教師確實教授此班級的此時段
+                if (this.teacherOwnsSlot(requestingTeacher, day, period, requestClass)) {
+                    // 檢查當前教師在此時段是否可以上課（無衝突）
+                    const conflict = this.checkTeacherConflict(currentTeacher, day, period);
+                    
+                    if (!conflict) {
+                        // 有效的直接交換
+                        return [
+                            {
+                                from: currentTeacher,
+                                to: requestingTeacher,
+                                day: requestDay,
+                                period: requestPeriod,
+                                className: requestClass
+                            },
+                            {
+                                from: requestingTeacher,
+                                to: currentTeacher,
+                                day: day,
+                                period: period,
+                                className: requestClass
+                            }
+                        ];
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    // 尋找三方交換方案
+    findThreeWayExchange(request) {
+        const teacherA = request.teacher; // 請求教師
+        const requestDay = request.day;
+        const requestPeriod = request.period;
+        const requestClass = request.className;
+        
+        // 檢查請求班級在請求時段是否有課
+        const teacherB = this.getTeacherAtSlot(requestDay, requestPeriod, requestClass);
+        
+        if (!teacherB) {
+            this.log("無課時段，無法交換");
+            return null;
+        }
+        
+        if (teacherB === teacherA) {
+            this.log("教師已教授此課程");
+            return null;
+        }
+        
+        // 檢查請求教師是否有教授請求班級的任何課程
+        if (!this.teacherTeachesClass(teacherA, requestClass)) {
+            this.log("請求教師不教授此班級任何課程");
+            return null;
+        }
+        
+        // 檢查請求教師是否已在此時段有課
+        if (this.checkTeacherConflict(teacherA, requestDay, requestPeriod)) {
+            this.log("請求教師在請求時段已有課程");
+            return null;
+        }
+        
+        const solutions = [];
+        
+        // 尋找 A 教授該班級的所有時段 (A 將給 C)
+        for (const dayAtoC of this.days) {
+            for (const periodAtoC of this.periods) {
+                // 確認 A 在此時段教授該班級
+                if (!this.teacherOwnsSlot(teacherA, dayAtoC, periodAtoC, requestClass)) {
+                    continue;
+                }
+                
+                // 尋找可能的教師 C (將接收 A 的課、給 B 一堂課)
+                for (const dayCtoB of this.days) {
+                    for (const periodCtoB of this.periods) {
+                        // 確認該班級在此時段確實有課（非無課）
+                        if (!this.isClassScheduled(dayCtoB, periodCtoB, requestClass)) {
+                            // 無課時段，跳過
+                            continue;
+                        }
+                        
+                        // 尋找教師 C 教授該班級的時段
+                        const teacherC = this.getTeacherAtSlot(dayCtoB, periodCtoB, requestClass);
+                        
+                        // 跳過無效的教師 C
+                        if (!teacherC || teacherC === teacherA || teacherC === teacherB) {
+                            continue;
+                        }
+                        
+                        // 確認 C 可以接手 A 的課(沒有衝突)
+                        if (this.checkTeacherConflict(teacherC, dayAtoC, periodAtoC)) {
+                            continue;
+                        }
+                        
+                        // 確認 B 可以接手 C 的課(沒有衝突)
+                        if (this.checkTeacherConflict(teacherB, dayCtoB, periodCtoB)) {
+                            continue;
+                        }
+                        
+                        // 形成有效的三方交換循環
+                        solutions.push([
+                            {
+                                from: teacherB,  // B 的課(請求的課程)
+                                to: teacherA,    // 給 A
+                                day: requestDay,
+                                period: requestPeriod,
+                                className: requestClass
+                            },
+                            {
+                                from: teacherA,  // A 的課
+                                to: teacherC,    // 給 C
+                                day: dayAtoC,
+                                period: periodAtoC,
+                                className: requestClass
+                            },
+                            {
+                                from: teacherC,  // C 的課
+                                to: teacherB,    // 給 B
+                                day: dayCtoB,
+                                period: periodCtoB,
+                                className: requestClass
+                            }
+                        ]);
+                    }
+                }
+            }
+        }
+        
+        return solutions.length > 0 ? solutions : null;
+    }
+    
+    // 尋找四方交換方案
+    findFourWayExchange(request) {
+        const teacherA = request.teacher; // 請求教師
+        const requestDay = request.day;
+        const requestPeriod = request.period;
+        const requestClass = request.className;
+        
+        // 檢查請求班級在請求時段是否有課
+        const teacherB = this.getTeacherAtSlot(requestDay, requestPeriod, requestClass);
+        
+        if (!teacherB) {
+            this.log("無課時段，無法交換");
+            return null;
+        }
+        
+        if (teacherB === teacherA) {
+            this.log("教師已教授此課程");
+            return null;
+        }
+        
+        // 檢查請求教師是否有教授請求班級的任何課程
+        if (!this.teacherTeachesClass(teacherA, requestClass)) {
+            this.log("請求教師不教授此班級任何課程");
+            return null;
+        }
+        
+        // 檢查請求教師是否已在此時段有課
+        if (this.checkTeacherConflict(teacherA, requestDay, requestPeriod)) {
+            this.log("請求教師在請求時段已有課程");
+            return null;
+        }
+        
+        const solutions = [];
+        
+        // 在四方交換中，我們需要找到一個循環：
+        // A 想要 B 的課，然後:
+        // 1. B -> A (B 將請求的課程給 A)
+        // 2. C -> B (C 給 B 一堂課，補償 B)
+        // 3. D -> C (D 給 C 一堂課，補償 C)
+        // 4. A -> D (A 給 D 一堂課，補償 D，完成循環)
+        
+        // 找出A教授該班級的所有時段(用於A→D)
+        const A_slots = this.getTeacherSlotsForClass(teacherA, requestClass);
+        
+        for (const A_slot of A_slots) {
+            const dayAtoD = A_slot.day;
+            const periodAtoD = A_slot.period;
+            
+            // 尋找可能的教師D (會接收A的課)
+            for (const dayDtoC of this.days) {
+                for (const periodDtoC of this.periods) {
+                    // 確認該班級在此時段有課(非無課)
+                    if (!this.isClassScheduled(dayDtoC, periodDtoC, requestClass)) {
+                        continue;
+                    }
+                    
+                    // 尋找教師D
+                    const teacherD = this.getTeacherAtSlot(dayDtoC, periodDtoC, requestClass);
+                    
+                    // 跳過無效的教師D
+                    if (!teacherD || teacherD === teacherA || teacherD === teacherB) {
+                        continue;
+                    }
+                    
+                    // 確認D可以接手A的課程(無衝突)
+                    if (this.checkTeacherConflict(teacherD, dayAtoD, periodAtoD)) {
+                        continue;
+                    }
+                    
+                    // 尋找可能的教師C(要接收D的課、給B課)
+                    for (const dayCtoB of this.days) {
+                        for (const periodCtoB of this.periods) {
+                            // 確認該班級在此時段確實有課（非無課）
+                            if (!this.isClassScheduled(dayCtoB, periodCtoB, requestClass)) {
+                                continue;
+                            }
+                            
+                            // 尋找教師C
+                            const teacherC = this.getTeacherAtSlot(dayCtoB, periodCtoB, requestClass);
+                            
+                            // 跳過無效的教師C
+                            if (!teacherC || teacherC === teacherA || teacherC === teacherB || teacherC === teacherD) {
+                                continue;
+                            }
+                            
+                            // 確認C可以接手D的課程(無衝突)
+                            if (this.checkTeacherConflict(teacherC, dayDtoC, periodDtoC)) {
+                                continue;
+                            }
+                            
+                            // 確認B可以接手C的課程(無衝突)
+                            if (this.checkTeacherConflict(teacherB, dayCtoB, periodCtoB)) {
+                                continue;
+                            }
+                            
+                            // 形成有效的四方交換循環
+                            solutions.push([
+                                {
+                                    from: teacherB,  // B的課(請求的課程)
+                                    to: teacherA,    // 給A
+                                    day: requestDay,
+                                    period: requestPeriod,
+                                    className: requestClass
+                                },
+                                {
+                                    from: teacherC,  // C的課
+                                    to: teacherB,    // 給B
+                                    day: dayCtoB,
+                                    period: periodCtoB,
+                                    className: requestClass
+                                },
+                                {
+                                    from: teacherD,  // D的課
+                                    to: teacherC,    // 給C
+                                    day: dayDtoC,
+                                    period: periodDtoC,
+                                    className: requestClass
+                                },
+                                {
+                                    from: teacherA,  // A的課
+                                    to: teacherD,    // 給D
+                                    day: dayAtoD,
+                                    period: periodAtoD,
+                                    className: requestClass
+                                }
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return solutions.length > 0 ? solutions : null;
+    }
+
+    // 驗證交換方案的有效性
+    validateExchange(exchanges) {
+        if (!exchanges || !Array.isArray(exchanges) || exchanges.length === 0) {
+            return false;
+        }
+        
+        // 檢查每個交換步驟
+        for (const exchange of exchanges) {
+            // 確保交換的基本元素都存在
+            if (!exchange.from || !exchange.to || !exchange.day || 
+                !exchange.period || !exchange.className) {
+                return false;
+            }
+            
+            // 確保課程存在
+            if (!this.isClassScheduled(exchange.day, exchange.period, exchange.className)) {
+                return false;
+            }
+            
+            // 確保教師正確
+            const actualTeacher = this.getTeacherAtSlot(exchange.day, exchange.period, exchange.className);
+            if (actualTeacher !== exchange.from) {
+                return false;
+            }
+        }
+        
+        // 檢查交換環狀完整性（每個教師既有「給出」又有「接收」）
+        const givenByTeacher = {}; // 記錄每位教師給出的課程
+        const receivedByTeacher = {}; // 記錄每位教師接收的課程
+        
+        for (const exchange of exchanges) {
+            if (!givenByTeacher[exchange.from]) givenByTeacher[exchange.from] = 0;
+            if (!receivedByTeacher[exchange.to]) receivedByTeacher[exchange.to] = 0;
+            
+            givenByTeacher[exchange.from]++;
+            receivedByTeacher[exchange.to]++;
+        }
+        
+        // 確保每位教師給出和接收的課程數量相同
+        for (const teacher in givenByTeacher) {
+            if (!receivedByTeacher[teacher] || givenByTeacher[teacher] !== receivedByTeacher[teacher]) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    // 尋找所有可能的交換方案
+    findAllExchangeSolutions(request) {
+        const solutions = [];
+        
+        // 基本驗證
+        if (!request.teacher || !request.day || !request.period || !request.className) {
+            this.log("請求參數不完整");
+            return null;
+        }
+        
+        // 檢查該班級的課程是否存在
+        if (!this.teacherTeachesClass(request.teacher, request.className)) {
+            this.log("請求教師不教授此班級任何課程");
+            return null;
+        }
+        
+        // 尋找直接交換方案
+        const directExchange = this.findDirectExchange(request);
+        if (directExchange && this.validateExchange(directExchange)) {
+            solutions.push({
+                type: 'direct',
+                exchanges: directExchange
+            });
+        }
+        
+        // 尋找三方交換方案
+        const threeWayExchanges = this.findThreeWayExchange(request);
+        if (threeWayExchanges) {
+            threeWayExchanges.forEach(exchange => {
+                if (this.validateExchange(exchange)) {
+                    solutions.push({
+                        type: 'three-way',
+                        exchanges: exchange
+                    });
+                }
+            });
+        }
+        
+        // 尋找四方交換方案
+        const fourWayExchanges = this.findFourWayExchange(request);
+        if (fourWayExchanges) {
+            fourWayExchanges.forEach(exchange => {
+                if (this.validateExchange(exchange)) {
+                    solutions.push({
+                        type: 'four-way',
+                        exchanges: exchange
+                    });
+                }
+            });
+        }
+        
+        if (solutions.length === 0) {
+            this.log("未找到任何可行的交換方案");
+            return null;
+        }
+        
+        return solutions;
+    }
+}
+
+
+
+            // Find Solution functionality
+            document.getElementById('findSolution').addEventListener('click', () => {
+                const teacher = document.getElementById('teacher').value;
+                const day = document.getElementById('day').value;
+                const period = document.getElementById('period').value;
+                const className = document.getElementById('className').value;
+                const resultDiv = document.getElementById('result');
+                
+                // Validation
+                if (!teacher) {
+                    resultDiv.innerHTML = '<p class="no-solution"><i class="fas fa-exclamation-circle"></i>請選擇教師</p>';
+                    return;
+                }
+                if (!day) {
+                    resultDiv.innerHTML = '<p class="no-solution"><i class="fas fa-exclamation-circle"></i>請選擇日期</p>';
+                    return;
+                }
+                if (!period) {
+                    resultDiv.innerHTML = '<p class="no-solution"><i class="fas fa-exclamation-circle"></i>請選擇節次</p>';
+                    return;
+                }
+                if (!className) {
+                    resultDiv.innerHTML = '<p class="no-solution"><i class="fas fa-exclamation-circle"></i>請選擇班級</p>';
+                    return;
+                }
+                
+                // Loading indicator
+                resultDiv.innerHTML = '<p class="text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>正在尋找調課方案...</p>';
+                
+                setTimeout(() => {
+                    const request = {
+                        teacher,
+                        day,
+                        period,
+                        className
+                    };
+                    
+                    const exchanger = new ScheduleExchanger(scheduleData);
+                    const solutions = exchanger.findAllExchangeSolutions(request);
+                    
+                    if (solutions && solutions.length > 0) {
+                        allExchangeSolutions = solutions;
+                        renderSolutionOptions();
+                    } else {
+                        allExchangeSolutions = [];
+                        resultDiv.innerHTML = `
+                            <div class="no-solution">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>很抱歉，找不到合適的調課方案。請嘗試其他時段或班級。</span>
+                            </div>
+                            <p class="mt-4 text-gray-600">可能原因：</p>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>該教師在此時段已有其他課程</li>
+                                <li>此班級不在該教師的授課範圍</li>
+                                <li>無法找到合理的交換方案</li>
+                            </ul>`;
+                    }
+                }, 800);
+            });
+            
+            // Render solution options
+            // 渲染交換方案選項
+function renderSolutionOptions() {
+    const resultDiv = document.getElementById('result');
+    
+    if (!allExchangeSolutions || allExchangeSolutions.length === 0) {
+        resultDiv.innerHTML = `
+            <div class="no-solution">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>找不到合適的調課方案。此案例可能需要更複雜的多方交換，建議手動協調。</span>
+            </div>
+            <p class="mt-4 text-gray-600">建議可以：</p>
+            <ul class="list-disc ml-6 text-gray-600">
+                <li>嘗試其他時段或班級</li>
+                <li>考慮手動調整多位教師的課表</li>
+                <li>向行政單位申請特殊調課</li>
+            </ul>`;
+        return;
+    }
+    
+    let html = `<h3 class="result-title text-green-700">
+        <i class="fas fa-check-circle mr-2"></i>找到 ${allExchangeSolutions.length} 個可行的調課方案
+    </h3>`;
+    
+    html += '<p class="mb-4 text-gray-600">請選擇您希望執行的調課方案：</p>';
+    
+    allExchangeSolutions.forEach((solution, index) => {
+        let exchangeType = '';
+        let exchangeIcon = '';
+        
+        switch(solution.type) {
+            case 'direct': 
+                exchangeType = '直接交換'; 
+                exchangeIcon = 'fas fa-exchange-alt';
+                break;
+            case 'three-way': 
+                exchangeType = '三方交換'; 
+                exchangeIcon = 'fas fa-project-diagram';
+                break;
+            case 'four-way': 
+                exchangeType = '四方交換'; 
+                exchangeIcon = 'fas fa-network-wired';
+                break;
+        }
+        
+        html += `<div class="solution-card" data-solution-index="${index}">
+            <div class="solution-header">
+                <div class="solution-type">
+                    <i class="${exchangeIcon}"></i>${exchangeType}
+                </div>
+                <div class="solution-steps">${solution.exchanges.length} 個步驟</div>
+            </div>
+            <div class="solution-detail">`;
+        
+        // Add steps
+        for (const exchange of solution.exchanges) {
+            const dayName = translateDayToZh(exchange.day);
+            
+            html += `<div class="solution-step">
+                <span class="font-medium">${exchange.from}</span>
+                <i class="fas fa-arrow-right"></i>
+                <span class="font-medium">${exchange.to}</span>
+                <span class="ml-2 text-gray-600">${dayName} 第${exchange.period}節 ${exchange.className}班</span>
+            </div>`;
+        }
+        
+        html += `</div></div>`;
+    });
+    
+    html += `<div class="flex flex-wrap gap-2 mt-4">
+        <button id="apply-selected-exchange" class="btn btn-success" disabled>
+            <i class="fas fa-check-circle"></i>執行選中的方案
+        </button>
+        <button id="preview-selected-exchange" class="btn btn-primary" disabled>
+            <i class="fas fa-eye"></i>預覽選中的方案
+        </button>
+    </div>`;
+    
+    resultDiv.innerHTML = html;
+    
+    // Add event listeners for solution cards
+    document.querySelectorAll('.solution-card').forEach(card => {
+        card.addEventListener('click', function() {
+            // Remove previous selection
+            document.querySelectorAll('.solution-card').forEach(c => c.classList.remove('selected'));
+            
+            // Select this card
+            this.classList.add('selected');
+            selectedSolutionIndex = parseInt(this.getAttribute('data-solution-index'));
+            
+            // Enable buttons
+            document.getElementById('apply-selected-exchange').disabled = false;
+            document.getElementById('preview-selected-exchange').disabled = false;
+        });
+    });
+    
+    // Add event listeners for action buttons
+    document.getElementById('apply-selected-exchange').addEventListener('click', applySelectedExchange);
+    document.getElementById('preview-selected-exchange').addEventListener('click', previewSelectedExchange);
+}
+
+            // Apply selected exchange function
+            function applySelectedExchange() {
+                if (selectedSolutionIndex < 0 || !allExchangeSolutions[selectedSolutionIndex]) return;
+                
+                const solution = allExchangeSolutions[selectedSolutionIndex];
+                
+                // Apply all exchanges in the solution
+                for (const exchange of solution.exchanges) {
+                    updateScheduleCell(exchange.day, exchange.period, exchange.className, exchange.to);
+                }
+                
+                // Re-render all schedules
+                renderTeacherSchedule();
+                renderClassSchedule();
+                
+                // Update result display
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <div class="message success">
+                        <i class="fas fa-check-circle"></i>
+                        調課已成功執行！課表已更新。
+                    </div>`;
+                
+                // Clear solutions
+                allExchangeSolutions = [];
+                selectedSolutionIndex = -1;
+                
+                showMessage('調課執行成功，課表已更新', 'success');
+            }
+            
+            // Preview selected exchange function
+            function previewSelectedExchange() {
+                if (selectedSolutionIndex < 0 || !allExchangeSolutions[selectedSolutionIndex]) return;
+                
+                const solution = allExchangeSolutions[selectedSolutionIndex];
+                
+                // Create a preview of what the schedule would look like
+                let html = '<div class="message info">';
+                html += '<i class="fas fa-info-circle"></i>';
+                html += '<div><strong>預覽調課結果：</strong><ul class="mt-2 ml-4 list-disc">';
+                
+                for (const exchange of solution.exchanges) {
+                    const dayName = translateDayToZh(exchange.day);
+                    html += `<li>${dayName} 第${exchange.period}節 ${exchange.className}班：${exchange.from} → ${exchange.to}</li>`;
+                }
+                
+                html += '</ul></div></div>';
+                
+                // Show preview
+                const resultDiv = document.getElementById('result');
+                const currentContent = resultDiv.innerHTML;
+                resultDiv.innerHTML = html + '<hr class="my-4">' + currentContent;
+            }
+            
+            // Admin functions
+            document.getElementById('edit-teacher').addEventListener('change', function() {
+                const selectedTeacher = this.value;
+                
+                if (!selectedTeacher) {
+                    document.getElementById('teacher-name').value = '';
+                    document.getElementById('teacher-subject').value = '';
+                    document.getElementById('teacher-max-periods').value = '30';
+                    return;
+                }
+                
+                const teacher = teacherData.find(t => t.name === selectedTeacher);
+                
+                if (teacher) {
+                    document.getElementById('teacher-name').value = teacher.name;
+                    document.getElementById('teacher-subject').value = teacher.subject;
+                    document.getElementById('teacher-max-periods').value = teacher.maxPeriods || '30';
+                }
+            });
+            
+            document.getElementById('save-teacher').addEventListener('click', function() {
+                const selectedTeacher = document.getElementById('edit-teacher').value;
+                const newName = document.getElementById('teacher-name').value;
+                const newSubject = document.getElementById('teacher-subject').value;
+                const newMaxPeriods = document.getElementById('teacher-max-periods').value;
+                
+                if (!newName || !newSubject) {
+                    showMessage('請填寫完整的教師資料', 'error');
+                    return;
+                }
+                
+                const teacherIndex = teacherData.findIndex(t => t.name === selectedTeacher);
+                if (teacherIndex !== -1) {
+                    teacherData[teacherIndex].name = newName;
+                    teacherData[teacherIndex].subject = newSubject;
+                    teacherData[teacherIndex].maxPeriods = parseInt(newMaxPeriods) || 30;
+                    showMessage('教師資料已更新', 'success');
+                    updateTeacherDropdowns();
+                } else {
+                    showMessage('找不到要更新的教師資料', 'error');
+                }
+            });
+            
+            document.getElementById('add-teacher').addEventListener('click', function() {
+                const newName = document.getElementById('teacher-name').value;
+                const newSubject = document.getElementById('teacher-subject').value;
+                const newMaxPeriods = document.getElementById('teacher-max-periods').value;
+                
+                if (!newName || !newSubject) {
+                    showMessage('請填寫完整的教師資料', 'error');
+                    return;
+                }
+                
+                if (teacherData.some(t => t.name === newName)) {
+                    showMessage('教師已存在', 'error');
+                    return;
+                }
+                
+                const newId = Math.max(...teacherData.map(t => t.id)) + 1;
+                teacherData.push({ 
+                    id: newId, 
+                    name: newName, 
+                    subject: newSubject,
+                    maxPeriods: parseInt(newMaxPeriods) || 30
+                });
+                showMessage('新教師已添加', 'success');
+                updateTeacherDropdowns();
+                
+                document.getElementById('teacher-name').value = '';
+                document.getElementById('teacher-subject').value = '';
+                document.getElementById('teacher-max-periods').value = '30';
+            });
+            
+            document.getElementById('delete-teacher').addEventListener('click', function() {
+                const selectedTeacher = document.getElementById('edit-teacher').value;
+                
+                if (!selectedTeacher) {
+                    showMessage('請選擇要刪除的教師', 'error');
+                    return;
+                }
+                
+                // Check if teacher is assigned to any classes
+                let isAssigned = false;
+                for (const day in scheduleData) {
+                    for (const period in scheduleData[day]) {
+                        for (const className in scheduleData[day][period]) {
+                            if (scheduleData[day][period][className] === selectedTeacher) {
+                                isAssigned = true;
+                                break;
+                            }
+                        }
+                        if (isAssigned) break;
+                    }
+                    if (isAssigned) break;
+                }
+                
+                if (isAssigned) {
+                    showMessage('此教師已被排課，無法刪除', 'error');
+                    return;
+                }
+                
+                const teacherIndex = teacherData.findIndex(t => t.name === selectedTeacher);
+                if (teacherIndex !== -1) {
+                    teacherData.splice(teacherIndex, 1);
+                    showMessage('教師資料已刪除', 'success');
+                    updateTeacherDropdowns();
+                    
+                    // Clear form
+                    document.getElementById('edit-teacher').value = '';
+                    document.getElementById('teacher-name').value = '';
+                    document.getElementById('teacher-subject').value = '';
+                    document.getElementById('teacher-max-periods').value = '';
+                } else {
+                    showMessage('找不到要刪除的教師資料', 'error');
+                }
+            });
+            
+            document.getElementById('save-schedule').addEventListener('click', function() {
+                const day = document.getElementById('edit-day').value;
+                const period = document.getElementById('edit-period').value;
+                const className = document.getElementById('edit-class').value;
+                const teacherName = document.getElementById('assign-teacher').value;
+                
+                // Check for conflicts
+                if (teacherName) {
+                    const conflictClass = checkTeacherConflict(teacherName, day, period, className);
+                    if (conflictClass) {
+                        showMessage(`衝堂錯誤：${teacherName}在${translateDayToZh(day)}第${period}節已有${conflictClass}的課`, 'error');
+                        return;
+                    }
+                }
+                
+                updateScheduleCell(day, period, className, teacherName);
+                showMessage('課表已更新', 'success');
+                renderTeacherSchedule();
+                renderClassSchedule();
+            });
+            
+            document.getElementById('check-conflicts').addEventListener('click', function() {
+                const conflicts = [];
+                
+                for (const day in scheduleData) {
+                    for (const period in scheduleData[day]) {
+                        const teachersInSlot = {};
+                        
+                        for (const className in scheduleData[day][period]) {
+                            const teacher = scheduleData[day][period][className];
+                            
+                            if (!teachersInSlot[teacher]) {
+                                teachersInSlot[teacher] = [];
+                            }
+                            
+                            teachersInSlot[teacher].push(className);
+                        }
+                        
+                        for (const teacher in teachersInSlot) {
+                            if (teachersInSlot[teacher].length > 1) {
+                                conflicts.push({
+                                    teacher: teacher,
+                                    day: day,
+                                    period: period,
+                                    classes: teachersInSlot[teacher]
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                if (conflicts.length === 0) {
+                    showMessage('課表檢查完成，沒有發現衝堂問題', 'success');
+                } else {
+                    let message = `發現 ${conflicts.length} 個衝堂問題：<ul class="mt-2 ml-4 list-disc">`;
+                    conflicts.forEach(conflict => {
+                        message += `<li>${conflict.teacher}在${translateDayToZh(conflict.day)}第${conflict.period}節同時被安排教授 ${conflict.classes.join('、')} 課程</li>`;
+                    });
+                    message += '</ul>';
+                    showMessage(message, 'error');
+                }
+            });
+            
+            function showMessage(message, type) {
+                const messageElement = document.getElementById('admin-message');
+                messageElement.innerHTML = message;
+                messageElement.className = 'message';
+                messageElement.classList.add(type);
+                messageElement.style.display = 'block';
+                
+                if (type === 'success') {
+                    messageElement.innerHTML = `<i class="fas fa-check-circle"></i><span>${message}</span>`;
+                    setTimeout(() => {
+                        messageElement.style.display = 'none';
+                    }, 3000);
+                } else {
+                    messageElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${message}</span>`;
+                }
+            }
+            
+            function updateTeacherDropdowns() {
+                // List of all teacher select elements that need to be updated
+                const teacherSelects = document.querySelectorAll('select.teacher-select, #edit-teacher, #assign-teacher, #class-teacher, #modal-teacher-select, #teacher');
+                
+                teacherSelects.forEach(select => {
+                    const currentValue = select.value;
+                    const isAddNew = select.id === 'edit-teacher';
+                    const isMainSearch = select.id === 'teacher';
+                    
+                    select.innerHTML = '';
+                    
+                    // Add appropriate empty option
+                    if (select.id === 'assign-teacher' || select.id === 'modal-teacher-select') {
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '無課';
+                        select.appendChild(emptyOption);
+                    } else if (select.classList.contains('teacher-select') || select.id === 'class-teacher') {
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '選擇教師';
+                        select.appendChild(emptyOption);
+                    } else if (isAddNew) {
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '--新增教師--';
+                        select.appendChild(emptyOption);
+                    } else if (isMainSearch) {
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '--請選擇--';
+                        select.appendChild(emptyOption);
+                    }
+                    
+                    // Add teacher options
+                    teacherData.forEach(teacher => {
+                        const option = document.createElement('option');
+                        option.value = teacher.name;
+                        option.textContent = teacher.name;
+                        select.appendChild(option);
+                    });
+                    
+                    // Restore selected value if it still exists
+                    if (currentValue && (currentValue === '' || teacherData.some(t => t.name === currentValue))) {
+                        select.value = currentValue;
+                    }
+                });
+            }
+            
+            // Initialize the app
+            updateTeacherDropdowns();
+            renderTeacherSchedule();
+            renderClassSchedule();
+        });
+    </script>
+</body>
+</html>
